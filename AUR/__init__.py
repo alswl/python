@@ -18,7 +18,7 @@ import re
 
 __iid__ = "PythonInterface/v0.1"
 __prettyname__ = "Archlinux User Repository"
-__version__ = "1.0"
+__version__ = "1.1"
 __trigger__ = "aur "
 __author__ = "Manuel Schneider"
 __dependencies__ = []
@@ -50,7 +50,7 @@ def handleQuery(query):
         req = request.Request(url)
 
         with request.urlopen(req) as response:
-            data = json.load(response)
+            data = json.loads(response.read().decode())
             if data['type'] == "error":
                 return Item(
                     id=__prettyname__,
@@ -62,7 +62,7 @@ def handleQuery(query):
             else:
                 results = []
                 pattern = re.compile(query.string, re.IGNORECASE)
-                for entry in data['results']:
+                for entry in sorted(data['results'], key=lambda item: item['Name']):
                     name = entry['Name']
 
                     item = Item(
@@ -71,7 +71,7 @@ def handleQuery(query):
                         text="<b>%s</b> <i>%s</i> (%s)" % (pattern.sub(lambda m: "<u>%s</u>" % m.group(0), name), entry['Version'], entry['NumVotes']),
                         completion=query.rawString
                     )
-                    subtext = entry['Description'] if entry['Description'] else "<No description>"
+                    subtext = entry['Description'] if entry['Description'] else "[No description]"
                     if entry['OutOfDate']:
                         subtext = '<font color="red">[Out of date: %s]</font> %s' % (datetime.fromtimestamp(entry['OutOfDate']).strftime("%F"), subtext)
                     if entry['Maintainer'] is None:
@@ -79,10 +79,9 @@ def handleQuery(query):
                     item.subtext = subtext
 
                     if install_cmdline:
-                        item.addAction(TermAction("Install with yaourt", split(install_cmdline % name)))
-
-                    if install_cmdline:
-                        item.addAction(TermAction("Install with yaourt (noconfirm)", split(install_cmdline % name) + ["--noconfirm"]))
+                        tokens = split(install_cmdline % name)
+                        item.addAction(TermAction("Install with %s" % tokens[0], tokens))
+                        item.addAction(TermAction("Install with %s (noconfirm)" % tokens[0], tokens + ["--noconfirm"]))
 
                     item.addAction(UrlAction("Open AUR website", "https://aur.archlinux.org/packages/%s/" % name))
 

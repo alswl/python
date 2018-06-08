@@ -2,11 +2,12 @@
 
 import os
 from signal import SIGKILL, SIGTERM
+
 from albertv0 import *
 
 __iid__ = "PythonInterface/v0.1"
 __prettyname__ = "Kill Process"
-__version__ = "1.2"
+__version__ = "1.3"
 __trigger__ = "kill "
 __author__ = "Benedict Dudel, Manuel Schneider"
 __dependencies__ = []
@@ -19,8 +20,8 @@ def handleQuery(query):
         results = []
         uid = os.getuid()
         for dir_entry in os.scandir('/proc'):
-            if dir_entry.name.isdigit() and dir_entry.stat().st_uid == uid:
-                try:
+            try:
+                if dir_entry.name.isdigit() and dir_entry.stat().st_uid == uid:
                     proc_command = open(os.path.join(dir_entry.path, 'comm'), 'r').read().strip()
                     if query.string in proc_command:
                         proc_cmdline = open(os.path.join(dir_entry.path, 'cmdline'), 'r').read().strip().replace("\0", " ")
@@ -37,6 +38,8 @@ def handleQuery(query):
                                 ]
                             )
                         )
-                except IOError:  # TOCTOU dirs may disappear
-                    continue
+            except FileNotFoundError:  # TOCTOU dirs may disappear
+                continue
+            except IOError:  # TOCTOU dirs may disappear
+                continue
         return results
